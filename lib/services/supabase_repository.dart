@@ -104,6 +104,7 @@ class SupabaseAttendanceRepository implements AttendanceRepository {
     required String sessionId,
     required String studentId,
     required AttendanceStatus status,
+    int? lateMinutes,
   }) =>
       _guard(() async {
         final existing = _rows(
@@ -116,14 +117,17 @@ class SupabaseAttendanceRepository implements AttendanceRepository {
         );
         if (existing.isNotEmpty) {
           final current = AttendanceRecord.fromMap(existing.first);
-          if (current.validation != ValidationStatus.pending) {
+          if (current.validation != ValidationStatus.pending && user.role == AppRole.student) {
             throw const RepositoryException(
               'Cette déclaration est déjà validée et ne peut plus être modifiée.',
             );
           }
           final updated = await _client
               .from('attendance_records')
-              .update({'status': status.name})
+              .update({
+                'status': status.name,
+                'late_minutes': status == AttendanceStatus.late ? lateMinutes : null,
+              })
               .eq('id', current.id)
               .select()
               .single();
@@ -135,6 +139,7 @@ class SupabaseAttendanceRepository implements AttendanceRepository {
           'status': status.name,
           'source': user.role == AppRole.student ? 'student' : 'teacher',
           'declared_by': _userId,
+          'late_minutes': status == AttendanceStatus.late ? lateMinutes : null,
         }).select().single();
         return AttendanceRecord.fromMap(Map<String, dynamic>.from(created));
       });

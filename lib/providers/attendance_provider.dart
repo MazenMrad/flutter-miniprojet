@@ -87,12 +87,14 @@ class AttendanceProvider extends ChangeNotifier {
     required String sessionId,
     required String studentId,
     required AttendanceStatus status,
+    int? lateMinutes,
   }) =>
       _action('Déclaration enregistrée.', () => _repository.declareAttendance(
             user: user,
             sessionId: sessionId,
             studentId: studentId,
             status: status,
+            lateMinutes: lateMinutes,
           ));
 
   Future<bool> validate({
@@ -111,11 +113,23 @@ class AttendanceProvider extends ChangeNotifier {
     required String recordId,
     required String reason,
   }) =>
-      _action('Réclamation transmise.', () => _repository.submitClaim(
-            user: user,
-            recordId: recordId,
-            reason: reason,
-          ));
+      _action('Réclamation transmise.', () async {
+        final record = _records.firstWhere(
+          (r) => r.id == recordId,
+          orElse: () => throw const RepositoryException('Déclaration introuvable.'),
+        );
+        final session = _sessions.where((s) => s.id == record.sessionId).firstOrNull;
+        if (session == null) {
+          throw const RepositoryException('Séance introuvable pour cette déclaration.');
+        }
+        final delay = DateTime.now().difference(session.startsAt).inDays;
+        if (delay > claimDelayDays) {
+          throw RepositoryException(
+            'Délai de réclamation dépassé ($claimDelayDays jours maximum).',
+          );
+        }
+        await _repository.submitClaim(user: user, recordId: recordId, reason: reason);
+      });
 
   Future<bool> decideClaim({
     required Profile user,
@@ -161,6 +175,33 @@ class AttendanceProvider extends ChangeNotifier {
     _error = null;
     _notice = null;
     notifyListeners();
+  }
+
+  String ruleValue(String key) => _rules
+      .firstWhere((r) => r.key == key, orElse: () => InstitutionRule(key: key, value: ''))
+      .value;
+
+  int get lateThresholdMinutes => int.tryParse(ruleValue('late_threshold_minutes')) ?? 15;
+  int get maxAbsences => int.tryParse(ruleValue('max_absences')) ?? 4;
+  int get claimDelayDays => int.tryParse(ruleValue('claim_delay_days')) ?? 7;
+
+  bool isEffectiveAbsence(AttendanceRecord record) =>
+      record.validation == ValidationStatus.approved &&
+      (record.status == AttendanceStatus.absent ||
+          (record.status == AttendanceStatus.late &&
+              (record.lateMinutes ?? 0) > lateThresholdMinutes));
+
+  List<({String id, String name, int count})> studentsOverAbsenceLimit() {
+    final counts = <String, int>{};
+    for (final record in _records) {
+      if (isEffectiveAbsence(record)) {
+        counts[record.studentId] = (counts[record.studentId] ?? 0) + 1;
+      }
+    }
+    return _profiles
+        .where((p) => p.role == AppRole.student && (counts[p.id] ?? 0) > maxAbsences)
+        .map((p) => (id: p.id, name: p.fullName, count: counts[p.id]!))
+        .toList();
   }
 
   String subjectName(String id) =>

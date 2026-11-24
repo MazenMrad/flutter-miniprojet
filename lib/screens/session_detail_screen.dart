@@ -2,6 +2,7 @@ import 'package:absence_management/models/domain.dart';
 import 'package:absence_management/models/enums.dart';
 import 'package:absence_management/providers/auth_provider.dart';
 import 'package:absence_management/providers/attendance_provider.dart';
+import 'package:absence_management/widgets/late_minutes_dialog.dart';
 import 'package:absence_management/widgets/status_chip.dart';
 import 'package:absence_management/widgets/theme.dart';
 import 'package:flutter/material.dart';
@@ -105,11 +106,16 @@ class _StudentAttendance extends StatelessWidget {
                         label: Text(status.label),
                         selected: record?.status == status,
                         onSelected: (_) async {
+                          final lateMinutes = status == AttendanceStatus.late
+                              ? await showLateMinutesDialog(context)
+                              : null;
+                          if (!context.mounted) return;
                           final ok = await data.declare(
                             user: auth.user!,
                             sessionId: session.id,
                             studentId: studentId,
                             status: status,
+                            lateMinutes: lateMinutes,
                           );
                           if (!context.mounted) return;
                           _notice(context, data, ok);
@@ -218,11 +224,16 @@ class _Roster extends StatelessWidget {
                     onSelected: (action) async {
                       if (action.startsWith('set:')) {
                         final status = AttendanceStatus.from(action.substring(4));
+                        final lateMinutes = status == AttendanceStatus.late
+                            ? await showLateMinutesDialog(context)
+                            : null;
+                        if (!context.mounted) return;
                         final ok = await data.declare(
                           user: auth.user!,
                           sessionId: session.id,
                           studentId: student.id,
                           status: status,
+                          lateMinutes: lateMinutes,
                         );
                         if (!context.mounted) return;
                         _notice(context, data, ok);

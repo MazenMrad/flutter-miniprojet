@@ -171,6 +171,7 @@ class DemoAttendanceRepository implements AttendanceRepository {
     required String sessionId,
     required String studentId,
     required AttendanceStatus status,
+    int? lateMinutes,
   }) async {
     if (user.role == AppRole.student && studentId != user.id) {
       throw const RepositoryException('Un étudiant ne peut déclarer que sa propre présence.');
@@ -184,12 +185,26 @@ class DemoAttendanceRepository implements AttendanceRepository {
         status: status,
         declaredBy: user.id,
         declaredAt: DateTime.now(),
+        lateMinutes: status == AttendanceStatus.late ? lateMinutes : null,
       ),
     );
-    if (existing.validation != ValidationStatus.pending) {
+    if (existing.validation != ValidationStatus.pending && user.role == AppRole.student) {
       throw const RepositoryException('Cette déclaration est déjà validée et ne peut plus être modifiée.');
     }
-    final updated = existing.copyWith(status: status, note: null);
+    final updated = AttendanceRecord(
+      id: existing.id,
+      sessionId: existing.sessionId,
+      studentId: existing.studentId,
+      status: status,
+      source: existing.source,
+      declaredBy: existing.declaredBy,
+      declaredAt: existing.declaredAt,
+      validation: existing.validation,
+      validatedBy: existing.validatedBy,
+      validatedAt: existing.validatedAt,
+      note: null,
+      lateMinutes: status == AttendanceStatus.late ? lateMinutes : null,
+    );
     if (!_records.contains(existing)) {
       _records.add(updated);
     } else {

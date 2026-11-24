@@ -32,6 +32,7 @@ abstract class AttendanceRepository {
     required String sessionId,
     required String studentId,
     required AttendanceStatus status,
+    int? lateMinutes,
   });
 
   Future<AttendanceRecord> validateAttendance({

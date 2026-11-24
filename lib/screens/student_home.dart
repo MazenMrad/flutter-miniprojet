@@ -76,6 +76,33 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 10),
+            Builder(
+              builder: (context) {
+                final effective = data.records.where(data.isEffectiveAbsence).length;
+                final over = effective > data.maxAbsences;
+                return Card(
+                  color: over ? AppColors.danger.withValues(alpha: 0.1) : null,
+                  child: ListTile(
+                    leading: Icon(
+                      over ? Icons.warning_amber_outlined : Icons.info_outlined,
+                      color: over ? AppColors.danger : AppColors.primary,
+                    ),
+                    title: Text(
+                      'Absences prises en compte : $effective / ${data.maxAbsences}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: over ? AppColors.danger : null,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'Retards comptés au-delà de ${data.lateThresholdMinutes} min '
+                      '• Réclamation sous ${data.claimDelayDays} jours',
+                    ),
+                  ),
+                );
+              },
+            ),
             const SizedBox(height: 18),
             const SectionTitle('Historique'),
             const SizedBox(height: 8),

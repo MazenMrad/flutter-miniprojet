@@ -132,6 +132,7 @@ class AttendanceRecord {
   final String? validatedBy;
   final DateTime? validatedAt;
   final String? note;
+  final int? lateMinutes;
 
   const AttendanceRecord({
     required this.id,
@@ -145,6 +146,7 @@ class AttendanceRecord {
     this.validatedBy,
     this.validatedAt,
     this.note,
+    this.lateMinutes,
   });
 
   AttendanceRecord copyWith({
@@ -153,6 +155,7 @@ class AttendanceRecord {
     String? validatedBy,
     DateTime? validatedAt,
     String? note,
+    int? lateMinutes,
   }) =>
       AttendanceRecord(
         id: id,
@@ -166,6 +169,7 @@ class AttendanceRecord {
         validatedBy: validatedBy ?? this.validatedBy,
         validatedAt: validatedAt ?? this.validatedAt,
         note: note ?? this.note,
+        lateMinutes: lateMinutes ?? this.lateMinutes,
       );
 
   factory AttendanceRecord.fromMap(Map<String, dynamic> map) => AttendanceRecord(
@@ -180,6 +184,7 @@ class AttendanceRecord {
         validatedBy: nullableString(map['validated_by']),
         validatedAt: map['validated_at'] == null ? null : parseDate(map['validated_at']),
         note: nullableString(map['note']),
+        lateMinutes: map['late_minutes'] == null ? null : (map['late_minutes'] as num).toInt(),
       );
 
   Map<String, dynamic> toMap() => {
@@ -194,6 +199,7 @@ class AttendanceRecord {
         'validated_by': validatedBy,
         'validated_at': validatedAt?.toIso8601String(),
         'note': note,
+        'late_minutes': lateMinutes,
       };
 }
 

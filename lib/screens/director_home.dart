@@ -115,6 +115,43 @@ class DirectorHomeScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_outlined, color: AppColors.warning),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Seuil d’absences (${data.maxAbsences})',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (data.studentsOverAbsenceLimit().isEmpty)
+                      const Text('Aucun étudiant ne dépasse le seuil.',
+                          style: TextStyle(color: AppColors.muted))
+                    else
+                      ...data.studentsOverAbsenceLimit().map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Text('${item.name} : ${item.count} absences'),
+                            ),
+                          ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Retards comptés comme absences au-delà de ${data.lateThresholdMinutes} min.',
+                      style: const TextStyle(fontSize: 12, color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text('Réclamations', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 12),
                     Text('En attente enseignant : ${stats.pendingClaims}'),

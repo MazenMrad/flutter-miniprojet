@@ -1,4 +1,5 @@
 import 'package:absence_management/models/enums.dart';
+import 'package:absence_management/providers/attendance_provider.dart';
 import 'package:absence_management/providers/auth_provider.dart';
 import 'package:absence_management/services/demo_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -81,6 +82,85 @@ void main() {
     expect(auth.user?.role, AppRole.teacher);
     await auth.signOut();
     expect(auth.isAuthenticated, false);
+  });
+
+  test('teacher can correct a declaration that was already validated', () async {
+    final repo = DemoAttendanceRepository();
+    final teacher = (await repo.getProfiles()).firstWhere((p) => p.id == 'teacher-1');
+    final corrected = await repo.declareAttendance(
+      user: teacher,
+      sessionId: 'session-2',
+      studentId: 'student-2',
+      status: AttendanceStatus.absent,
+    );
+    expect(corrected.status, AttendanceStatus.absent);
+    expect(corrected.validation, ValidationStatus.approved);
+  });
+
+  test('late threshold rule turns long lateness into an effective absence', () async {
+    final repo = DemoAttendanceRepository();
+    final provider = AttendanceProvider(repo);
+    final profiles = await repo.getProfiles();
+    final student = profiles.firstWhere((p) => p.id == 'student-1');
+    final teacher = profiles.firstWhere((p) => p.id == 'teacher-1');
+    await provider.load(student);
+    await provider.declare(
+      user: student,
+      sessionId: 'session-5',
+      studentId: student.id,
+      status: AttendanceStatus.late,
+      lateMinutes: 30,
+    );
+    final record = provider.records.firstWhere((r) => r.sessionId == 'session-5');
+    await repo.validateAttendance(
+      user: teacher,
+      recordId: record.id,
+      validation: ValidationStatus.approved,
+    );
+    await provider.load(student);
+    final validated = provider.records.firstWhere((r) => r.sessionId == 'session-5');
+    expect(provider.isEffectiveAbsence(validated), isTrue);
+
+    await provider.declare(
+      user: teacher,
+      sessionId: 'session-5',
+      studentId: student.id,
+      status: AttendanceStatus.late,
+      lateMinutes: 5,
+    );
+    await provider.load(student);
+    final corrected = provider.records.firstWhere((r) => r.sessionId == 'session-5');
+    expect(provider.isEffectiveAbsence(corrected), isFalse);
+  });
+
+  test('claim delay rule rejects contestations outside the allowed window', () async {
+    final repo = DemoAttendanceRepository();
+    final provider = AttendanceProvider(repo);
+    final profiles = await repo.getProfiles();
+    final director = profiles.firstWhere((p) => p.role == AppRole.director);
+    final student = profiles.firstWhere((p) => p.id == 'student-1');
+    await provider.load(director);
+    await provider.updateRule(user: director, key: 'claim_delay_days', value: '-1');
+    await provider.load(student);
+    final ok = await provider.submitClaim(
+      user: student,
+      recordId: 'r1',
+      reason: 'Motif suffisamment détaillé pour être accepté.',
+    );
+    expect(ok, isFalse);
+    expect(provider.error, contains('Délai de réclamation dépassé'));
+  });
+
+  test('director detects students above the absence limit', () async {
+    final repo = DemoAttendanceRepository();
+    final provider = AttendanceProvider(repo);
+    final director = (await repo.getProfiles()).firstWhere((p) => p.role == AppRole.director);
+    await provider.load(director);
+    await provider.updateRule(user: director, key: 'max_absences', value: '0');
+    await provider.load(director);
+    final flagged = provider.studentsOverAbsenceLimit();
+    expect(flagged, isNotEmpty);
+    expect(flagged.first.name, 'Lina Benali');
   });
 
   test('student statistics reflect own records only', () async {

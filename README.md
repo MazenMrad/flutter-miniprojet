@@ -25,7 +25,7 @@ Utiliser la **publishable key**, jamais la service role key. La dépendance est 
 
 ## Base de données
 
-1. Appliquer `supabase/migrations/202611240001_initial_schema.sql` dans le SQL Editor du projet.
+1. Appliquer `supabase/migrations/202611240001_initial_schema.sql` puis `202611240002_late_minutes.sql` dans le SQL Editor du projet.
 2. (Optionnel, environnement de développement) appliquer `supabase/seed.sql`.
 3. Créer les comptes Auth et attribuer le rôle dans **`app_metadata`**, jamais `user_metadata` (modifiable par l'utilisateur) :
 
@@ -47,10 +47,12 @@ Rôles acceptés : `student`, `teacher`, `director`. Créer aussi une ligne corr
 
 ## Workflow
 
-1. L'étudiant accède à sa séance depuis l'emploi du temps et déclare présent / absent / retard.
-2. L'enseignant valide, rejette ou corrige les déclarations de ses séances.
-3. L'étudiant conteste une absence validée ; l'enseignant accepte, rejette ou escalade au directeur.
+1. L'étudiant accède à sa séance depuis l'emploi du temps et déclare présent / absent / retard (avec minutes de retard).
+2. L'enseignant valide, rejette ou corrige les déclarations de ses séances, y compris après validation.
+3. L'étudiant conteste une absence validée dans le délai autorisé ; l'enseignant accepte, rejette ou escalade au directeur.
 4. Le directeur statue en dernier ressort, consulte les statistiques, ajuste les règles et vérifie le journal d'audit.
+
+Les règles du `public.institution_rules` sont appliquées à l'exécution : `claim_delay_days` limite la contestation, `late_threshold_minutes` convertit un long retard en absence effective, et `max_absences` déclenche un alerting étudiant/directeur.
 
 ## Vérification
 
